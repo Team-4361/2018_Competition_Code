@@ -5,7 +5,11 @@ import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.GenericHID.Hand;
+import edu.wpi.first.wpilibj.GenericHID.RumbleType;
+import edu.wpi.first.wpilibj.DoubleSolenoid;
+
 import com.ctre.phoenix.motorcontrol.can.WPI_TalonSRX;
+import edu.wpi.first.wpilibj.Compressor;
 
 import Chassis.*;
 import Controls.*;
@@ -22,22 +26,28 @@ import Util.*;
 public class Robot extends IterativeRobot
 {
 	String AutoSelected;
-	
 
 	JoystickTank Stick;
 	XboxArcade Xbox;
 	
 	WPI_TalonSRX[] CAN;
-	Drive left, right, Elevator, lIntake, rIntake, Climber;
+	Drive left, right, Elevator, Climber;
+	Drive lIntake, rIntake;
+	
+	DoubleSolenoid lSol, rSol;
 	
 	TankDrive chassis;
 	Elevator elevator;
+	Intake intake;
+	Autonomous auto;
 	
-	boolean XboxMode, HalfSpeed;
-	/**
-	 * This function is run when the robot is first started up and should be
-	 * used for any initialization code.
-	 */
+	Compressor comp;
+	
+	boolean XboxMode, HalfSpeed, RedSide;
+	
+	SendableChooser<String> chooser = new SendableChooser<>();
+	
+	
 	@Override
 	public void robotInit()
 	{
@@ -51,64 +61,96 @@ public class Robot extends IterativeRobot
 			CAN[i] = new WPI_TalonSRX(i);
 		}
 		
-		WPI_TalonSRX[] leftArr = {CAN[0], CAN[0]};
+		Drive.SetFullCAN(CAN);
+		
+		int[] leftArr = {0, 0};
 		left = new Drive(leftArr);
 
-		WPI_TalonSRX[] rightArr = {CAN[0], CAN[0]};
+		int[] rightArr = {0, 0};
 		right = new Drive(rightArr);
 		
-		WPI_TalonSRX[] elevatorArr = {CAN[0]};
+		int[] elevatorArr = {0};
 		Elevator = new Drive(elevatorArr);
 		
-		WPI_TalonSRX[] lIntakeArr = {CAN[0]};
+		int[] lIntakeArr = {0};
 		lIntake = new Drive(lIntakeArr);
 		
-		WPI_TalonSRX[] rIntakeArr = {CAN[0]};
+		int[] rIntakeArr = {0};
 		rIntake = new Drive(rIntakeArr);
 		
-		WPI_TalonSRX[] ClimberArr = {CAN[0]};
+		int[] ClimberArr = {0};
 		Climber = new Drive(ClimberArr);
 		
+		lSol = new DoubleSolenoid(0, 0);
+		rSol = new DoubleSolenoid(0, 0);
+		
 		chassis = new TankDrive(left, right);
-		elevator = new Elevator(Elevator, rIntake, lIntake);
+		elevator = new Elevator(Elevator);
+		intake = new Intake(lIntake, rIntake, lSol, rSol);
+		
+		comp = new Compressor(0);
 		
 		//Internal Variables
 		XboxMode = false;
 		HalfSpeed = false;
+		
+		chooser.addDefault("Drive to Line", "line");
+		chooser.addObject("Dance", "dance");
+		chooser.addObject("Switch", "switch");
+		chooser.addObject("Scale", "scale");
+		chooser.addObject("Switch*2", "2switch");
+		
+		SmartDashboard.putData("Auto choices", chooser);
+		SmartDashboard.putBoolean("RedSide", false);
+		SmartDashboard.putBoolean("XboxMode", XboxMode);
+		SmartDashboard.putBoolean("HalfSpeed", HalfSpeed);
 	}
 
-	/**
-	 * This autonomous (along with the chooser code above) shows how to select
-	 * between different autonomous modes using the dashboard. The sendable
-	 * chooser code works with the Java SmartDashboard. If you prefer the
-	 * LabVIEW Dashboard, remove all of the chooser code and uncomment the
-	 * getString line to get the auto name from the text box below the Gyro
-	 *
-	 * You can add additional auto modes by adding additional comparisons to the
-	 * switch structure below with additional strings. If using the
-	 * SendableChooser make sure to add them to the chooser code above as well.
-	 */
+	
 	@Override
 	public void autonomousInit() 
 	{
-		AutoSelected = "";
+		AutoSelected = SmartDashboard.getString("Auto choices", "line");
+		RedSide = SmartDashboard.getBoolean("RedSide", false);
+		auto = new Autonomous(chassis, RedSide, null, null);
 	}
 
-	/**
-	 * This function is called periodically during autonomous
-	 */
+	
 	@Override
 	public void autonomousPeriodic()
 	{
-		
+		switch(AutoSelected) {
+
+		case "switch":
+			auto.Dance();
+			break;
+			
+		case "scale":
+			auto.Dance();
+			break;
+			
+		case "2switch":
+			auto.Dance();
+			break;
+			
+		case "dance":
+			auto.Dance();
+			break;
+			
+		case "line":
+		default:
+			auto.DriveToLine();
+			break;
+		}
 	}
 
-	/**
-	 * This function is called periodically during operator control
-	 */
+	
 	@Override
 	public void teleopPeriodic()
 	{
+		//Get values
+		XboxMode = SmartDashboard.getBoolean("XboxMode", false);
+
 		double[] DriveVal;
 		
 		//Controls
@@ -125,18 +167,17 @@ public class Robot extends IterativeRobot
 			
 			if(Stick.right.getRawButtonPressed(2))
 				HalfSpeed = !HalfSpeed;
-			
 		}
 		
 		//Elevator
 		elevator.Manual(Xbox.getY(Hand.kRight));
 		
 		if(Xbox.getBumper(Hand.kLeft))
-			elevator.Intake();
+			intake.intake();
 		else if(Xbox.getBumper(Hand.kRight))
-			elevator.Intake();
+			intake.outtake();
 		else
-			elevator.StopIntake();
+			intake.stopIntake();
 		
 		//Chassis
 		if(HalfSpeed)
@@ -145,12 +186,15 @@ public class Robot extends IterativeRobot
 			DriveVal[1] /= 2;
 		}
 		
+		Xbox.setRumble(RumbleType.kLeftRumble, Math.abs(Xbox.getX(Hand.kRight)));
+		Xbox.setRumble(RumbleType.kRightRumble, Math.abs(Xbox.getX(Hand.kRight)));
+		
 		chassis.drive(DriveVal[0], DriveVal[1]);
+		
+		//Update SmartDashboard Values
+		SmartDashboard.putBoolean("HalfSpeed", HalfSpeed);
 	}
-
-	/**
-	 * This function is called periodically during test mode
-	 */
+	
 	@Override
 	public void testPeriodic()
 	{
