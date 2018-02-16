@@ -1,9 +1,0 @@
-Wheel Diameter=0;
-kP = 0.02;
-kI = 0.00;
-kD = 0.00;
-kF = 0.00;
-kToleranceDegrees = 2.0f;
-intakeSpeed=.5;
-outtakeSpeed=.2;
-elevatorSpeed=0;

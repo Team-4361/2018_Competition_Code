@@ -2,40 +2,48 @@ package org.usfirst.frc.team4361.robot;
 
 import edu.wpi.first.wpilibj.DoubleSolenoid;
 import MotorControllers.Drive;
-import Util.Constants;
+import Util.*;
 
 public class Intake
 {
 	private Drive lInt, rInt;
-	DoubleSolenoid lSol, rSol;
+	DoubleSolenoid intSol;
 	
-	double intakeSpeed, outtakeSpeed;
+	double LintakeSpeed, RintakeSpeed, outtakeSpeed, fastOuttakeSpeed;
 	
-	public Intake(Drive lInt, Drive rInt, DoubleSolenoid lSol, DoubleSolenoid rSol)
+	boolean IntakeOpen = false;
+	
+	public Intake(Drive lInt, Drive rInt, DoubleSolenoid intSol)
 	{
 		this.lInt = lInt;
 		this.rInt = rInt;
 		
-		this.lSol = lSol;
-		this.rSol = rSol;
+		this.intSol = intSol;
 		
-		Constants cons = new Constants();
-		cons.LoadConstants();
+		Constants cons = Constant.AllConstant;
 		
-		intakeSpeed = cons.GetDouble("intakeSpeed");
+		LintakeSpeed = cons.GetDouble("LintakeSpeed");
+		RintakeSpeed = cons.GetDouble("RintakeSpeed");
 		outtakeSpeed = cons.GetDouble("outtakeSpeed");
+		fastOuttakeSpeed = cons.GetDouble("fastOuttakeSpeed");
 	}
 	
 	public void intake()
 	{
-		lInt.drive(intakeSpeed);
-		rInt.drive(intakeSpeed);
+		lInt.drive(-LintakeSpeed);
+		rInt.drive(RintakeSpeed);
 	}
 	
 	public void outtake()
 	{
-		lInt.drive(outtakeSpeed);
+		lInt.drive(-outtakeSpeed);
 		rInt.drive(outtakeSpeed);
+	}
+	
+	public void fastOuttake()
+	{
+		lInt.drive(-fastOuttakeSpeed);
+		rInt.drive(fastOuttakeSpeed);
 	}
 	
 	public void stopIntake()
@@ -44,16 +52,38 @@ public class Intake
 		rInt.drive(0);
 	}
 	
-	public void openInttake()
+	public void openIntake()
 	{
-		lSol.set(DoubleSolenoid.Value.kForward);
-		rSol.set(DoubleSolenoid.Value.kForward);
+		intSol.set(DoubleSolenoid.Value.kForward);
 	}
 	
-	public void closeInttake()
+	public void closeIntake()
 	{
 
-		lSol.set(DoubleSolenoid.Value.kReverse);
-		rSol.set(DoubleSolenoid.Value.kReverse);
+		intSol.set(DoubleSolenoid.Value.kReverse);
+	}
+	
+	public void NoPressureIntake()
+	{
+		intSol.set(DoubleSolenoid.Value.kOff);
+	}
+	
+	public void SwitchIntake()
+	{
+		if(IntakeOpen)
+		{
+			closeIntake();
+		}
+		else
+		{
+			openIntake();
+		}
+		
+		IntakeOpen = !IntakeOpen;
+	}
+	
+	public boolean GetIntakePosition()
+	{
+		return IntakeOpen;
 	}
 }

@@ -10,6 +10,9 @@ import edu.wpi.first.wpilibj.DoubleSolenoid;
 
 import com.ctre.phoenix.motorcontrol.can.WPI_TalonSRX;
 import edu.wpi.first.wpilibj.Compressor;
+import edu.wpi.first.wpilibj.AnalogInput;
+import edu.wpi.first.wpilibj.CameraServer;
+import MotorControllers.PneumaticsControl;
 
 import Chassis.*;
 import Controls.*;
@@ -27,6 +30,8 @@ public class Robot extends IterativeRobot
 {
 	String AutoSelected;
 
+	Constants cons;
+	
 	JoystickTank Stick;
 	XboxArcade Xbox;
 	
@@ -34,28 +39,31 @@ public class Robot extends IterativeRobot
 	Drive left, right, Elevator, Climber;
 	Drive lIntake, rIntake;
 	
-	DoubleSolenoid lSol, rSol;
+	DoubleSolenoid intSol;
 	
 	TankDrive chassis;
 	Elevator elevator;
 	Intake intake;
 	Autonomous auto;
-	
-	Compressor comp;
+	PneumaticsControl Pneum;
 	
 	boolean XboxMode, HalfSpeed, RedSide;
 	
 	SendableChooser<String> chooser = new SendableChooser<>();
+	SendableChooser<String> position = new SendableChooser<>();
 	
 	
 	@Override
 	public void robotInit()
 	{
-		//Physical Peripherals
-		Stick = new JoystickTank(0, 1);
-		Xbox = new XboxArcade(3, Hand.kLeft);
+		cons = Constant.GetConstants();
+		Constant.AllConstant = cons;
 		
-		CAN = new WPI_TalonSRX[9];
+		//Physical Peripherals
+		Stick = new JoystickTank(cons.GetInt("LeftStick"), cons.GetInt("RightStick"));
+		Xbox = new XboxArcade(cons.GetInt("Xbox"), Hand.kLeft);
+		
+		CAN = new WPI_TalonSRX[cons.GetInt("CANLength")];
 		for(int i = 0; i < CAN.length; i++)
 		{
 			CAN[i] = new WPI_TalonSRX(i);
@@ -63,36 +71,40 @@ public class Robot extends IterativeRobot
 		
 		Drive.SetFullCAN(CAN);
 		
-		int[] leftArr = {0, 0};
+		int[] leftArr = {cons.GetInt("Left0"), cons.GetInt("Left1")};
 		left = new Drive(leftArr);
 
-		int[] rightArr = {0, 0};
+		int[] rightArr = {cons.GetInt("Right0"), cons.GetInt("Right1")};
 		right = new Drive(rightArr);
 		
-		int[] elevatorArr = {0};
+		int[] elevatorArr = {cons.GetInt("Elevator")};
 		Elevator = new Drive(elevatorArr);
 		
-		int[] lIntakeArr = {0};
+		int[] lIntakeArr = {cons.GetInt("lInt")};
 		lIntake = new Drive(lIntakeArr);
 		
-		int[] rIntakeArr = {0};
+		int[] rIntakeArr = {cons.GetInt("rInt")};
 		rIntake = new Drive(rIntakeArr);
 		
-		int[] ClimberArr = {0};
+		int[] ClimberArr = {cons.GetInt("Climber")};
 		Climber = new Drive(ClimberArr);
 		
-		lSol = new DoubleSolenoid(0, 0);
-		rSol = new DoubleSolenoid(0, 0);
+		intSol = new DoubleSolenoid(cons.GetInt("intFSol"), cons.GetInt("intRSol"));
 		
 		chassis = new TankDrive(left, right);
 		elevator = new Elevator(Elevator);
-		intake = new Intake(lIntake, rIntake, lSol, rSol);
+		intake = new Intake(lIntake, rIntake, intSol);
 		
-		comp = new Compressor(0);
+		Pneum = new PneumaticsControl(0, cons.GetInt("PressureSensor"), 4.547368);
+		
+		Pneum.DisplayPSI();
+		Pneum.SystemSwitch();
 		
 		//Internal Variables
 		XboxMode = false;
 		HalfSpeed = false;
+		
+		CameraSetup();
 		
 		chooser.addDefault("Drive to Line", "line");
 		chooser.addObject("Dance", "dance");
@@ -100,8 +112,12 @@ public class Robot extends IterativeRobot
 		chooser.addObject("Scale", "scale");
 		chooser.addObject("Switch*2", "2switch");
 		
+		position.addObject("Left", "left");
+		position.addObject("Middle", "middle");
+		position.addObject("Right", "right");
+		
 		SmartDashboard.putData("Auto choices", chooser);
-		SmartDashboard.putBoolean("RedSide", false);
+		SmartDashboard.putData("Position choices", position);
 		SmartDashboard.putBoolean("XboxMode", XboxMode);
 		SmartDashboard.putBoolean("HalfSpeed", HalfSpeed);
 	}
@@ -111,14 +127,29 @@ public class Robot extends IterativeRobot
 	public void autonomousInit() 
 	{
 		AutoSelected = SmartDashboard.getString("Auto choices", "line");
-		RedSide = SmartDashboard.getBoolean("RedSide", false);
-		auto = new Autonomous(chassis, RedSide, null, null);
+		Autonomous.Position pos = Autonomous.Position.Left;
+		switch(SmartDashboard.getString("PositionChoices", "left"))
+		{
+		case "left":
+			pos = Autonomous.Position.Left;
+			break;
+		case "middle":
+			pos = Autonomous.Position.Middle;
+			break;
+		case "right":
+			pos = Autonomous.Position.Right;
+			break;
+		}
+		
+		auto = new Autonomous(chassis, intake, elevator, pos, null, null);
 	}
 
 	
 	@Override
 	public void autonomousPeriodic()
 	{
+		Pneum.SystemSwitch();
+		
 		switch(AutoSelected) {
 
 		case "switch":
@@ -148,6 +179,9 @@ public class Robot extends IterativeRobot
 	@Override
 	public void teleopPeriodic()
 	{
+		Pneum.SystemSwitch();
+		Pneum.DisplayPSI();
+		
 		//Get values
 		XboxMode = SmartDashboard.getBoolean("XboxMode", false);
 
@@ -158,26 +192,54 @@ public class Robot extends IterativeRobot
 		{
 			DriveVal = Xbox.GetDrive();
 			
-			if(Xbox.getBButtonPressed())
+			if(Xbox.getXButtonPressed())
 				HalfSpeed = !HalfSpeed;
+			
+			elevator.Manual(Stick.right.getY());
+			
+
+			if(Stick.right.getRawButton(5))
+				intake.intake();
+			else if(Stick.right.getRawButton(4))
+				intake.outtake();
+			else if(Stick.right.getRawButton(3))
+				intake.fastOuttake();
+			else
+				intake.stopIntake();
+			
+			if(Stick.right.getRawButton(1))
+				intake.SwitchIntake();
 		}
 		else
 		{
-			DriveVal = Stick.GetDrive();
+			if(Stick.right.getRawButton(4))
+				DriveVal = Stick.GetPerfectStraight();
+			else if(Stick.right.getRawButton(3))
+				DriveVal = Stick.GetPerfectTurn();
+			else
+				DriveVal = Stick.GetDrive();
+				
 			
 			if(Stick.right.getRawButtonPressed(2))
 				HalfSpeed = !HalfSpeed;
+			
+			//Subsystems
+
+			//Elevator
+			elevator.Manual(Xbox.getY(Hand.kRight));
+			
+			if(Xbox.getAButton())
+				intake.intake();
+			else if(Xbox.getBButton())
+				intake.outtake();
+			else if(Xbox.getYButton())
+				intake.fastOuttake();
+			else
+				intake.stopIntake();
+			
+			if(Xbox.getBumperPressed(Hand.kRight))
+				intake.SwitchIntake();
 		}
-		
-		//Elevator
-		elevator.Manual(Xbox.getY(Hand.kRight));
-		
-		if(Xbox.getBumper(Hand.kLeft))
-			intake.intake();
-		else if(Xbox.getBumper(Hand.kRight))
-			intake.outtake();
-		else
-			intake.stopIntake();
 		
 		//Chassis
 		if(HalfSpeed)
@@ -186,13 +248,43 @@ public class Robot extends IterativeRobot
 			DriveVal[1] /= 2;
 		}
 		
-		Xbox.setRumble(RumbleType.kLeftRumble, Math.abs(Xbox.getX(Hand.kRight)));
-		Xbox.setRumble(RumbleType.kRightRumble, Math.abs(Xbox.getX(Hand.kRight)));
-		
 		chassis.drive(DriveVal[0], DriveVal[1]);
+		
+		
+		if(XboxMode)
+		{
+			Xbox.setRumble(RumbleType.kLeftRumble, Math.abs(DriveVal[0]));
+			Xbox.setRumble(RumbleType.kRightRumble, Math.abs(DriveVal[1]));
+		}
+		else
+		{
+			if(Xbox.getXButton())
+			{
+				Xbox.setRumble(RumbleType.kLeftRumble, Math.abs(Xbox.getY(Hand.kLeft)));
+				Xbox.setRumble(RumbleType.kRightRumble, Math.abs(Xbox.getY(Hand.kLeft)));
+			}
+			else
+			{
+				Xbox.setRumble(RumbleType.kLeftRumble, 0);
+				Xbox.setRumble(RumbleType.kRightRumble, 0);
+			}
+		}
+		
+		if(Xbox.getStartButtonPressed())
+			cons.LoadConstants();
 		
 		//Update SmartDashboard Values
 		SmartDashboard.putBoolean("HalfSpeed", HalfSpeed);
+		SmartDashboard.putBoolean("Intake Open", intake.GetIntakePosition());
+	}
+	
+	@Override
+	public void disabledPeriodic()
+	{
+		Xbox.setRumble(RumbleType.kLeftRumble, 0);
+		Xbox.setRumble(RumbleType.kRightRumble, 0);
+
+		Pneum.DisplayPSI();
 	}
 	
 	@Override
@@ -200,5 +292,20 @@ public class Robot extends IterativeRobot
 	{
 		
 	}
+	
+
+	public void CameraSetup()
+	{
+		try 
+		{
+			CameraServer.getInstance().startAutomaticCapture("cam0", 0);
+			CameraServer.getInstance().startAutomaticCapture("cam1", 1);
+		}
+		catch (Exception e)
+		{
+			System.out.println("Camera Error: " + e.getMessage());
+		}
+	}
+	
 }
 
