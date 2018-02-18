@@ -7,6 +7,7 @@ import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.GenericHID.Hand;
 import edu.wpi.first.wpilibj.GenericHID.RumbleType;
 import edu.wpi.first.wpilibj.DoubleSolenoid;
+import edu.wpi.first.wpilibj.DriverStation;
 
 import com.ctre.phoenix.motorcontrol.can.WPI_TalonSRX;
 import edu.wpi.first.wpilibj.Compressor;
@@ -49,6 +50,8 @@ public class Robot extends IterativeRobot
 	
 	boolean XboxMode, HalfSpeed, RedSide;
 	
+	String FMSdata;
+	
 	SendableChooser<String> chooser = new SendableChooser<>();
 	SendableChooser<String> position = new SendableChooser<>();
 	
@@ -63,31 +66,7 @@ public class Robot extends IterativeRobot
 		Stick = new JoystickTank(cons.GetInt("LeftStick"), cons.GetInt("RightStick"));
 		Xbox = new XboxArcade(cons.GetInt("Xbox"), Hand.kLeft);
 		
-		CAN = new WPI_TalonSRX[cons.GetInt("CANLength")];
-		for(int i = 0; i < CAN.length; i++)
-		{
-			CAN[i] = new WPI_TalonSRX(i);
-		}
-		
-		Drive.SetFullCAN(CAN);
-		
-		int[] leftArr = {cons.GetInt("Left0"), cons.GetInt("Left1")};
-		left = new Drive(leftArr);
-
-		int[] rightArr = {cons.GetInt("Right0"), cons.GetInt("Right1")};
-		right = new Drive(rightArr);
-		
-		int[] elevatorArr = {cons.GetInt("Elevator")};
-		Elevator = new Drive(elevatorArr);
-		
-		int[] lIntakeArr = {cons.GetInt("lInt")};
-		lIntake = new Drive(lIntakeArr);
-		
-		int[] rIntakeArr = {cons.GetInt("rInt")};
-		rIntake = new Drive(rIntakeArr);
-		
-		int[] ClimberArr = {cons.GetInt("Climber")};
-		Climber = new Drive(ClimberArr);
+		MotorSetup();
 		
 		intSol = new DoubleSolenoid(cons.GetInt("intFSol"), cons.GetInt("intRSol"));
 		
@@ -104,22 +83,21 @@ public class Robot extends IterativeRobot
 		XboxMode = false;
 		HalfSpeed = false;
 		
+		FMSdata = "LLL";
+		
 		CameraSetup();
 		
 		chooser.addDefault("Drive to Line", "line");
+		chooser.addObject("Left", "left");
+		chooser.addObject("Middle", "mid");
+		chooser.addObject("Right", "right");
 		chooser.addObject("Dance", "dance");
-		chooser.addObject("Switch", "switch");
-		chooser.addObject("Scale", "scale");
-		chooser.addObject("Switch*2", "2switch");
-		
-		position.addObject("Left", "left");
-		position.addObject("Middle", "middle");
-		position.addObject("Right", "right");
 		
 		SmartDashboard.putData("Auto choices", chooser);
 		SmartDashboard.putData("Position choices", position);
 		SmartDashboard.putBoolean("XboxMode", XboxMode);
 		SmartDashboard.putBoolean("HalfSpeed", HalfSpeed);
+		SmartDashboard.putBoolean("Cube", true);
 	}
 
 	
@@ -127,21 +105,11 @@ public class Robot extends IterativeRobot
 	public void autonomousInit() 
 	{
 		AutoSelected = SmartDashboard.getString("Auto choices", "line");
-		Autonomous.Position pos = Autonomous.Position.Left;
-		switch(SmartDashboard.getString("PositionChoices", "left"))
-		{
-		case "left":
-			pos = Autonomous.Position.Left;
-			break;
-		case "middle":
-			pos = Autonomous.Position.Middle;
-			break;
-		case "right":
-			pos = Autonomous.Position.Right;
-			break;
-		}
 		
-		auto = new Autonomous(chassis, intake, elevator, pos, null, null);
+		boolean hasCube = SmartDashboard.getBoolean("Cube", false);
+		
+		auto = new Autonomous(chassis, intake, elevator, FMSdata, null, null);
+		auto.hasCube = hasCube;
 	}
 
 	
@@ -152,20 +120,20 @@ public class Robot extends IterativeRobot
 		
 		switch(AutoSelected) {
 
-		case "switch":
-			auto.Dance();
-			break;
-			
-		case "scale":
-			auto.Dance();
-			break;
-			
-		case "2switch":
-			auto.Dance();
-			break;
-			
 		case "dance":
 			auto.Dance();
+			break;
+			
+		case "left":
+				auto.Side('L');
+				break;
+				
+		case "mid":
+			auto.Middle();
+			break;
+			
+		case "right":
+			auto.Side('R');
 			break;
 			
 		case "line":
@@ -197,7 +165,7 @@ public class Robot extends IterativeRobot
 			
 			elevator.Manual(Stick.right.getY());
 			
-
+			//Elevator
 			if(Stick.right.getRawButton(5))
 				intake.intake();
 			else if(Stick.right.getRawButton(4))
@@ -218,16 +186,15 @@ public class Robot extends IterativeRobot
 				DriveVal = Stick.GetPerfectTurn();
 			else
 				DriveVal = Stick.GetDrive();
-				
+			
 			
 			if(Stick.right.getRawButtonPressed(2))
 				HalfSpeed = !HalfSpeed;
 			
-			//Subsystems
-
 			//Elevator
 			elevator.Manual(Xbox.getY(Hand.kRight));
 			
+			//Intake
 			if(Xbox.getAButton())
 				intake.intake();
 			else if(Xbox.getBButton())
@@ -270,8 +237,13 @@ public class Robot extends IterativeRobot
 			}
 		}
 		
+		
 		if(Xbox.getStartButtonPressed())
+		{
 			cons.LoadConstants();
+			MotorSetup();
+		}
+		
 		
 		//Update SmartDashboard Values
 		SmartDashboard.putBoolean("HalfSpeed", HalfSpeed);
@@ -285,6 +257,12 @@ public class Robot extends IterativeRobot
 		Xbox.setRumble(RumbleType.kRightRumble, 0);
 
 		Pneum.DisplayPSI();
+		
+		String GameData = DriverStation.getInstance().getGameSpecificMessage();
+		if(GameData != "")
+		{
+			FMSdata=GameData;
+		}
 	}
 	
 	@Override
@@ -305,6 +283,35 @@ public class Robot extends IterativeRobot
 		{
 			System.out.println("Camera Error: " + e.getMessage());
 		}
+	}
+	
+	public void MotorSetup()
+	{
+		CAN = new WPI_TalonSRX[cons.GetInt("CANLength")];
+		for(int i = 0; i < CAN.length; i++)
+		{
+			CAN[i] = new WPI_TalonSRX(i);
+		}
+		
+		Drive.SetFullCAN(CAN);
+		
+		int[] leftArr = {cons.GetInt("Left0"), cons.GetInt("Left1")};
+		left = new Drive(leftArr);
+
+		int[] rightArr = {cons.GetInt("Right0"), cons.GetInt("Right1")};
+		right = new Drive(rightArr);
+		
+		int[] elevatorArr = {cons.GetInt("Elevator")};
+		Elevator = new Drive(elevatorArr);
+		
+		int[] lIntakeArr = {cons.GetInt("lInt")};
+		lIntake = new Drive(lIntakeArr);
+		
+		int[] rIntakeArr = {cons.GetInt("rInt")};
+		rIntake = new Drive(rIntakeArr);
+		
+		int[] ClimberArr = {cons.GetInt("Climber")};
+		Climber = new Drive(ClimberArr);
 	}
 	
 }

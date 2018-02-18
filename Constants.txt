@@ -1,13 +1,12 @@
 ///Talons
-CANLength=9
-Left0=1
-Left1=6
-Right0=5
-Right1=7
+CANLength=8
+Left0=0
+Left1=1
+Right0=2
+Right1=3
 Elevator=4
-lInt=0
-rInt=0
-Climber=0
+lInt=5
+rInt=6
 
 ///Joysticks
 LeftStick=0
@@ -50,6 +49,8 @@ WallToScale=72
 BoxWidth=13
 PortalDepth=30
 CubeZoneWidth=42
+ScalePlate=48
+
 
 RobotWidth=39.5
 RobotDepth=35

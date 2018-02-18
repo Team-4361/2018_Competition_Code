@@ -55,12 +55,15 @@ public class Intake
 	public void openIntake()
 	{
 		intSol.set(DoubleSolenoid.Value.kForward);
+
+		IntakeOpen = true;
 	}
 	
 	public void closeIntake()
 	{
-
 		intSol.set(DoubleSolenoid.Value.kReverse);
+		
+		IntakeOpen = false;
 	}
 	
 	public void NoPressureIntake()
@@ -78,8 +81,6 @@ public class Intake
 		{
 			openIntake();
 		}
-		
-		IntakeOpen = !IntakeOpen;
 	}
 	
 	public boolean GetIntakePosition()
