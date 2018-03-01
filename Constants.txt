@@ -1,11 +1,11 @@
 ///Talons
 CANLength=8
-Left0=0
-Left1=1
+Left0=1
+Left1=0
 Right0=2
 Right1=3
 Elevator=4
-lInt=5
+lInt=7
 rInt=6
 
 ///Joysticks
@@ -14,11 +14,24 @@ RightStick=1
 Xbox=2
 
 ///Solenoids
-intFSol=3
-intRSol=2
+intFSol=4
+intRSol=5
+stopF=3
+stopR=2
 
 ///Sensors
+///Analog
 PressureSensor=0
+
+///Digital
+lEnc1=0
+lEnc2=1
+rEnc1=8
+rEnc2=9
+Upper=4
+Middle=5
+Lower=6
+Stop=7
 
 ///Values
 WheelDiameter=6
@@ -28,11 +41,13 @@ kD=0.00
 kF=0.00
 kToleranceDegrees=2.0f
 
-LintakeSpeed=-.23
-RintakeSpeed=-.25
-outtakeSpeed=.2
-fastOuttakeSpeed=.5
+LintakeSpeed=-.46
+RintakeSpeed=-.5
+outtakeSpeed=.4
+fastOuttakeSpeed=.7
 elevatorSpeed=.5
+elevatorDownSpeed=.3
+climbSpeed=.4
 
 ///Distance
 StationWidth=72

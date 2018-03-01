@@ -1,6 +1,8 @@
 package org.usfirst.frc.team4361.robot;
 
 import edu.wpi.first.wpilibj.DoubleSolenoid;
+import edu.wpi.first.wpilibj.Timer;
+
 import MotorControllers.Drive;
 import Util.*;
 
@@ -11,7 +13,8 @@ public class Intake
 	
 	double LintakeSpeed, RintakeSpeed, outtakeSpeed, fastOuttakeSpeed;
 	
-	boolean IntakeOpen = false;
+	boolean IntakeOpen, cubeFixRun;
+	Timer timer;
 	
 	public Intake(Drive lInt, Drive rInt, DoubleSolenoid intSol)
 	{
@@ -26,6 +29,10 @@ public class Intake
 		RintakeSpeed = cons.GetDouble("RintakeSpeed");
 		outtakeSpeed = cons.GetDouble("outtakeSpeed");
 		fastOuttakeSpeed = cons.GetDouble("fastOuttakeSpeed");
+		
+		IntakeOpen = false;
+		cubeFixRun = false;
+		timer = new Timer();
 	}
 	
 	public void intake()
@@ -86,5 +93,35 @@ public class Intake
 	public boolean GetIntakePosition()
 	{
 		return IntakeOpen;
+	}
+	
+	public void CubeFix(boolean button)
+	{
+		if(button && !cubeFixRun)
+		{
+			outtake();
+			timer.reset();
+			timer.start();
+			cubeFixRun = true;
+		}
+		
+		if(timer.get() >= .3)
+		{
+			if(rInt.GetSpeed() == outtakeSpeed)
+			{
+				intake();
+				timer.stop();
+				timer.reset();
+				timer.start();
+			}
+			else if(rInt.GetSpeed() == RintakeSpeed)
+			{
+				stopIntake();
+				timer.stop();
+				timer.reset();
+				cubeFixRun = false;
+			}
+			
+		}
 	}
 }
