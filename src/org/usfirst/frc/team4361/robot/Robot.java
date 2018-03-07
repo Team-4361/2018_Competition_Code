@@ -51,6 +51,8 @@ public class Robot extends IterativeRobot
 	Autonomous auto;
 	PneumaticsControl Pneum;
 	
+	Change elevatorPress;
+	
 	boolean XboxMode, demoMode, HalfSpeed, RedSide, Rumble;
 	
 	String FMSdata;
@@ -72,6 +74,7 @@ public class Robot extends IterativeRobot
 		
 		intSol = new DoubleSolenoid(cons.GetInt("intFSol"), cons.GetInt("intRSol"));
 		StopSol = new DoubleSolenoid(cons.GetInt("stopF"), cons.GetInt("stopR"));
+		StopSol.set(DoubleSolenoid.Value.kReverse);
 		
 		lEnc = new Encoder(cons.GetInt("lEnc1"), cons.GetInt("lEnc2"));
 		rEnc = new Encoder(cons.GetInt("rEnc1"), cons.GetInt("rEnc2"));
@@ -92,6 +95,8 @@ public class Robot extends IterativeRobot
 		
 		Pneum.DisplayPSI();
 		Pneum.SystemSwitch();
+		
+		elevatorPress = new Change();
 		
 		//Internal Variables
 		XboxMode = false;
@@ -114,6 +119,13 @@ public class Robot extends IterativeRobot
 		SmartDashboard.putBoolean("Demonstration", demoMode);
 		SmartDashboard.putBoolean("HalfSpeed", HalfSpeed);
 		SmartDashboard.putBoolean("Cube", true);
+		
+		SmartDashboard.putString("Set Position", elevator.GetSetPosition().toString());
+		Elevator.Position position = elevator.GetRealPosition();
+		if(position != null)
+			SmartDashboard.putString("Real Position", position.toString());
+		else
+			SmartDashboard.putString("Real Position", "Null");
 	}
 
 	
@@ -165,6 +177,7 @@ public class Robot extends IterativeRobot
 	{
 		Pneum.SystemSwitch();
 		Pneum.DisplayPSI();
+		elevator.ElevatorRun();
 		
 		//Get values
 		XboxMode = SmartDashboard.getBoolean("XboxMode", false);
@@ -205,7 +218,22 @@ public class Robot extends IterativeRobot
 				HalfSpeed = !HalfSpeed;
 			
 			elevator.Manual(Xbox.getY(Hand.kRight));
-
+			
+			//Elevator
+			if(Stick.right.getRawButton(1))
+				elevator.Climb();
+			else
+			{
+				//elevator.Manual(-Xbox.getY(Hand.kRight));
+				if(elevatorPress.State(Xbox.getPOV() != 0))
+				{
+					if(Xbox.getPOV() == 0)
+						elevator.Raise();
+					else if(Xbox.getPOV() == 180)
+						elevator.Lower();
+				}
+			}
+			
 			//Intake
 			if(Xbox.getAButton())
 				intake.intake();
@@ -237,8 +265,18 @@ public class Robot extends IterativeRobot
 			//Elevator
 			if(Stick.right.getRawButton(1))
 				elevator.Climb();
-			else
+			else if(Xbox.getStickButton(Hand.kRight))
 				elevator.Manual(-Xbox.getY(Hand.kRight));
+			else
+			{
+				if(elevatorPress.State(Xbox.getPOV() != -1))
+				{
+					if(Xbox.getPOV() == 0)
+						elevator.Raise();
+					else if(Xbox.getPOV() == 180)
+						elevator.Lower();
+				}
+			}
 			
 			//Intake
 			if(Xbox.getAButton())
@@ -302,6 +340,12 @@ public class Robot extends IterativeRobot
 		//Update SmartDashboard Values
 		SmartDashboard.putBoolean("HalfSpeed", HalfSpeed);
 		SmartDashboard.putBoolean("Intake Open", intake.GetIntakePosition());
+		SmartDashboard.putString("Set Position", elevator.GetSetPosition().toString());
+		Elevator.Position position = elevator.GetRealPosition();
+		if(position != null)
+			SmartDashboard.putString("Real Position", position.toString());
+		else
+			SmartDashboard.putString("Real Position", "Null");
 	}
 	
 	@Override

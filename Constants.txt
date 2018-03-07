@@ -24,14 +24,14 @@ stopR=2
 PressureSensor=0
 
 ///Digital
-lEnc1=0
-lEnc2=1
+lEnc1=6
+lEnc2=7
 rEnc1=8
 rEnc2=9
-Upper=4
-Middle=5
-Lower=6
-Stop=7
+Upper=0
+Middle=1
+Lower=3
+Stop=2
 
 ///Values
 WheelDiameter=6
@@ -45,8 +45,8 @@ LintakeSpeed=-.46
 RintakeSpeed=-.5
 outtakeSpeed=.4
 fastOuttakeSpeed=.7
-elevatorSpeed=.5
-elevatorDownSpeed=.3
+elevatorSpeed=.6
+elevatorDownSpeed=.4
 climbSpeed=.4
 
 ///Distance

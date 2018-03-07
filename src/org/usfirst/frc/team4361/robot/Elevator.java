@@ -12,7 +12,7 @@ public class Elevator
 {
 	public enum Position
 	{
-		Lower, LowMid, Middle, MidUp, Upper
+		Lower, LowMid, Middle, MidUp, Stop, Upper
 	}
 	
 	private Drive Elevator;
@@ -113,6 +113,9 @@ public class Elevator
 		
 		int Real = ConvertPositionToNum(GetRealPosition()), pos = ConvertPositionToNum(Position);
 		
+		if(Real == -1)
+			return;
+		
 		if(Real != pos)
 		{
 			if(Real < pos)
@@ -190,6 +193,11 @@ public class Elevator
 		}
 	}
 	
+	public Position GetSetPosition()
+	{
+		return Position;
+	}
+	
 	//Different position things
 	public Position GetRealPosition()
 	{
@@ -224,14 +232,14 @@ public class Elevator
 		}
 		else if(lim[2].get())
 		{
-			return Position.Middle;
+			return Position.Upper;
 		}
 		else if(lim[1].get())
 		{
 			return Position.Middle;
 		}
 		
-		return Position.Lower;
+		return null;
 	}
 	public Position HardLimPosition()
 	{
@@ -241,7 +249,17 @@ public class Elevator
 			lastPosition = Position.Lower;
 			return Position.Lower;
 		}
-		else if((lastPosition == Position.Lower && Elevator.GetSpeed() > 0) || (lastPosition == Position.Middle && Elevator.GetSpeed() < 0))
+		else if(lim[1].get())
+		{
+			lastPosition = Position.Middle;
+			return Position.Middle;
+		}
+		else if(lim[2].get())
+		{
+			lastPosition = Position.Upper;
+			return Position.Upper;
+		}
+		else if((lastPosition == Position.Upper && Elevator.GetSpeed() < 0) || (lastPosition == Position.Middle && Elevator.GetSpeed() > 0))
 		{
 			return Position.MidUp;
 		}
@@ -254,13 +272,8 @@ public class Elevator
 		{
 			return Position.LowMid;
 		}
-		else if(lim[1].get())
-		{
-			lastPosition = Position.Middle;
-			return Position.Middle;
-		}
 		
-		return Position.Lower;
+		return null;
 	}
 	
 	public void Manual(double speed)
@@ -295,7 +308,7 @@ public class Elevator
 		else if(pos == Position.Upper)
 			return 4;
 		
-		return 0;
+		return -1;
 	}
 
 	public Position ConvertNumToPosition(int num)
@@ -311,7 +324,7 @@ public class Elevator
 		else if(num == 4)
 			return Position.Upper;
 		
-		return Position.Lower;
+		return null;
 	}
 	public double GetHeight()
 	{
