@@ -17,9 +17,9 @@ public class Elevator
 	
 	private Drive Elevator;
 	private DigitalInput[] lim;
-	private DigitalInput StopLim, bottomSwitch;
+	private DigitalInput bottomSwitch;
 	private Encoder enc;
-	private Position Position, lastPosition;
+	private Position position, lastPosition;
 	
 	private Timer timer;
 	
@@ -29,14 +29,13 @@ public class Elevator
 	private double SwitchHeight, StopHeight, ScaleHeight;
 	private double ElevatorRatio, ElevatorDifference;
 	
-	private DoubleSolenoid StopSol;
 	
 	
 	public Elevator(Drive Elevator)
 	{
 		this.Elevator = Elevator;
 		
-		Position = Position.Lower;
+		position = Position.Lower;
 		lastPosition = Position.Lower;
 		
 		timer = new Timer();
@@ -57,47 +56,40 @@ public class Elevator
 		ElevatorRatio = cons.GetDouble("ElevatorRatio");
 		ElevatorDifference = cons.GetDouble("ElevatorDifference");
 	}
-	public Elevator(Drive Elevator, DoubleSolenoid StopSol)
-	{
-		//Manual
-		this(Elevator);
-		this.StopSol = StopSol;
-	}
-	public Elevator(Drive Elevator, DoubleSolenoid StopSol, DigitalInput StopLim, DigitalInput[] lim)
+	public Elevator(Drive Elevator, DigitalInput[] lim)
 	{
 		//Limit Switch based
-		this(Elevator, StopSol);
+		this(Elevator);
 		this.lim = lim;
-		this.StopLim = StopLim;
 	}
-	public Elevator(Drive Elevator, DoubleSolenoid StopSol, DigitalInput bottomSwitch)
+	public Elevator(Drive Elevator, DigitalInput bottomSwitch)
 	{
 		//Time based
-		this(Elevator, StopSol);
+		this(Elevator);
 		this.bottomSwitch = bottomSwitch;
 	}
-	public Elevator(Drive Elevator, DoubleSolenoid StopSol, DigitalInput bottomSwitch, Encoder enc)
+	public Elevator(Drive Elevator, DigitalInput bottomSwitch, Encoder enc)
 	{
 		//Encoder based
-		this(Elevator, StopSol, bottomSwitch);
+		this(Elevator, bottomSwitch);
 		this.enc = enc;
 	}
 	
 	//Position changers
 	public void Lower()
 	{
-		if(Position != Position.Lower && !HasRun)
-			Position = ConvertNumToPosition(ConvertPositionToNum(Position)-2);
+		if(position != Position.Lower && !HasRun)
+			position = ConvertNumToPosition(ConvertPositionToNum(position)-2);
 	}
 	public void Raise()
 	{
-		if(Position != Position.Upper && !HasRun)
-			Position = ConvertNumToPosition(ConvertPositionToNum(Position)+2);
+		if(position != Position.Upper && !HasRun)
+			position = ConvertNumToPosition(ConvertPositionToNum(position)+2);
 	}
 	public void Set(Position pos)
 	{
 		if(pos == Position.Lower || pos == Position.Middle || pos == Position.Upper && !HasRun)
-			Position = pos;
+			position = pos;
 	}
 	
 	//Actually movement
@@ -111,7 +103,7 @@ public class Elevator
 		if(lim == null || Climb)
 			return;
 		
-		int Real = ConvertPositionToNum(GetRealPosition()), pos = ConvertPositionToNum(Position);
+		int Real = ConvertPositionToNum(GetRealPosition()), pos = ConvertPositionToNum(position);
 		
 		if(Real == -1)
 			return;
@@ -130,7 +122,7 @@ public class Elevator
 	}
 	private void TimeRun()
 	{
-		if(Position == Position.Lower && bottomSwitch.get())
+		if(position == Position.Lower && bottomSwitch.get())
 		{
 			lastPosition = Position.Lower;
 			Elevator.drive(elevatorDownSpeed);
@@ -142,7 +134,7 @@ public class Elevator
 			double time = 0;
 			
 			//Middle moves
-			if(Position == Position.Middle)
+			if(position == Position.Middle)
 			{
 				if(lastPosition == Position.Lower)
 				{
@@ -157,7 +149,7 @@ public class Elevator
 			}
 			
 			//Upper moves
-			if(Position == Position.Upper)
+			if(position == Position.Upper)
 			{
 				if(lastPosition == Position.Lower)
 				{
@@ -187,7 +179,7 @@ public class Elevator
 					timer.stop();
 					timer.reset();
 					HasRun = false;
-					lastPosition = Position;
+					lastPosition = position;
 				}
 			}
 		}
@@ -195,7 +187,7 @@ public class Elevator
 	
 	public Position GetSetPosition()
 	{
-		return Position;
+		return position;
 	}
 	
 	//Different position things
@@ -259,40 +251,31 @@ public class Elevator
 			lastPosition = Position.Upper;
 			return Position.Upper;
 		}
-		else if((lastPosition == Position.Upper && Elevator.GetSpeed() < 0) || (lastPosition == Position.Middle && Elevator.GetSpeed() > 0))
+		else if((lastPosition == Position.Upper && Elevator.GetSpeed() < 0) || (lastPosition == Position.Middle && Elevator.GetSpeed() > 0) || lastPosition == Position.MidUp)
 		{
+			lastPosition = Position.MidUp;
 			return Position.MidUp;
 		}
-		else if(lim[2].get())
+		else if((lastPosition == Position.Lower && Elevator.GetSpeed() > 0) || (lastPosition == Position.Middle && Elevator.GetSpeed() < 0) || lastPosition == Position.LowMid)
 		{
-			lastPosition = Position.Middle;
-			return Position.Middle;
-		}
-		else if((lastPosition == Position.Middle && Elevator.GetSpeed() > 0) || (lastPosition == Position.Middle && Elevator.GetSpeed() < 0))
-		{
+			lastPosition = Position.LowMid;
 			return Position.LowMid;
 		}
+		
+		if(position == Position.Lower || position == Position.Upper)
+			return Position.Middle;
+		else if(lastPosition == Position.Middle)
+			return Position.LowMid;
 		
 		return null;
 	}
 	
 	public void Manual(double speed)
 	{
-		Elevator.drive(speed);
-	}
-	
-	public void Climb()
-	{
-		if(StopLim.get() && !Climb)
-		{
-			Elevator.drive(-climbSpeed);
-			Climb = true;
-		}
-		else if(Climb)
-		{
+		if(speed > 0 && GetRealPosition() == Position.Lower || speed < 0 && GetRealPosition() == Position.Upper)
 			Elevator.drive(0);
-			StopSol.set(DoubleSolenoid.Value.kForward);
-		}
+		else
+			Elevator.drive(speed);
 	}
 
 	public int ConvertPositionToNum(Position pos)
@@ -329,6 +312,11 @@ public class Elevator
 	public double GetHeight()
 	{
 		return enc.get() * ElevatorRatio;
+	}
+	
+	public Drive GetMotor()
+	{
+		return Elevator;
 	}
 	
 }

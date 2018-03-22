@@ -4,7 +4,7 @@ Left0=1
 Left1=0
 Right0=2
 Right1=3
-Elevator=4
+Elevator=5
 lInt=7
 rInt=6
 
@@ -36,29 +36,30 @@ Stop=2
 ///Values
 WheelDiameter=6
 kP=0.02
-kI=0.00
+kI=0.001
 kD=0.00
 kF=0.00
 kToleranceDegrees=2.0f
 
-LintakeSpeed=-.46
-RintakeSpeed=-.5
-outtakeSpeed=.4
+LintakeSpeed=-.58
+RintakeSpeed=-.6
+outtakeSpeed=.55
 fastOuttakeSpeed=.7
-elevatorSpeed=.6
-elevatorDownSpeed=.4
-climbSpeed=.4
+stopIntakeSpeed=.05
+elevatorSpeed=-.8
+elevatorDownSpeed=-.7
+climbSpeed=-.4
 
 ///Distance
 StationWidth=72
 ExchangerWidth=36
 ExchangerDepth=48
 SwitchDepth=180
-SwitchWidth=36
+SwitchWidth=52
 WallToAutoLine=120
-AutoLineToSwitch=48
+AutoLineToSwitch=20
 SwitchToMidNull=120
-SwitchToWall=72
+SwitchToWall=82.25
 ArcadeDepth=324
 WallToScale=72
 BoxWidth=13

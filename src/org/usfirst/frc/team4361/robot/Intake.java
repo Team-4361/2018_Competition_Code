@@ -11,7 +11,7 @@ public class Intake
 	private Drive lInt, rInt;
 	DoubleSolenoid intSol;
 	
-	double LintakeSpeed, RintakeSpeed, outtakeSpeed, fastOuttakeSpeed;
+	double LintakeSpeed, RintakeSpeed, outtakeSpeed, fastOuttakeSpeed, stopIntakeSpeed;
 	
 	boolean IntakeOpen, cubeFixRun;
 	Timer timer;
@@ -29,6 +29,7 @@ public class Intake
 		RintakeSpeed = cons.GetDouble("RintakeSpeed");
 		outtakeSpeed = cons.GetDouble("outtakeSpeed");
 		fastOuttakeSpeed = cons.GetDouble("fastOuttakeSpeed");
+		stopIntakeSpeed = cons.GetDouble("stopIntakeSpeed");
 		
 		IntakeOpen = false;
 		cubeFixRun = false;
@@ -55,8 +56,8 @@ public class Intake
 	
 	public void stopIntake()
 	{
-		lInt.drive(0);
-		rInt.drive(0);
+		lInt.drive(stopIntakeSpeed);
+		rInt.drive(-stopIntakeSpeed);
 	}
 	
 	public void openIntake()
@@ -105,7 +106,7 @@ public class Intake
 			cubeFixRun = true;
 		}
 		
-		if(timer.get() >= .3)
+		if(timer.get() >= 1)
 		{
 			if(rInt.GetSpeed() == outtakeSpeed)
 			{

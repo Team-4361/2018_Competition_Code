@@ -14,7 +14,7 @@ import edu.wpi.first.wpilibj.Encoder;
 import edu.wpi.first.wpilibj.DigitalInput;
 import edu.wpi.first.wpilibj.CameraServer;
 import MotorControllers.PneumaticsControl;
-
+import Movement.*;
 import Chassis.*;
 import Controls.*;
 import MotorControllers.*;
@@ -37,10 +37,10 @@ public class Robot extends IterativeRobot
 	XboxArcade Xbox;
 	
 	WPI_TalonSRX[] CAN;
-	Drive left, right, Elevator, Climber;
+	Drive left, right, ElevatorDrive, Climber;
 	Drive lIntake, rIntake;
 	
-	DoubleSolenoid intSol, StopSol;
+	DoubleSolenoid intSol, pushSol;
 	
 	Encoder lEnc, rEnc;
 	DigitalInput Upper, Middle, Lower, Stop;
@@ -51,9 +51,11 @@ public class Robot extends IterativeRobot
 	Autonomous auto;
 	PneumaticsControl Pneum;
 	
-	Change elevatorPress;
+	Change elevatorPress, intakePress, fixPress, gearPress;
 	
-	boolean XboxMode, demoMode, HalfSpeed, RedSide, Rumble;
+	int Gear = 4;
+	
+	boolean XboxMode, demoMode, RedSide, Rumble, ManualElevator;
 	
 	String FMSdata;
 	
@@ -73,8 +75,8 @@ public class Robot extends IterativeRobot
 		MotorSetup();
 		
 		intSol = new DoubleSolenoid(cons.GetInt("intFSol"), cons.GetInt("intRSol"));
-		StopSol = new DoubleSolenoid(cons.GetInt("stopF"), cons.GetInt("stopR"));
-		StopSol.set(DoubleSolenoid.Value.kReverse);
+		pushSol = new DoubleSolenoid(cons.GetInt("stopF"), cons.GetInt("stopR"));
+		pushSol.set(DoubleSolenoid.Value.kReverse);
 		
 		lEnc = new Encoder(cons.GetInt("lEnc1"), cons.GetInt("lEnc2"));
 		rEnc = new Encoder(cons.GetInt("rEnc1"), cons.GetInt("rEnc2"));
@@ -88,23 +90,25 @@ public class Robot extends IterativeRobot
 		DigitalInput[] arr = {Lower, Middle, Upper};
 		
 		chassis = new TankDrive(left, right);
-		elevator = new Elevator(Elevator, StopSol, Stop, arr);
+		elevator = new Elevator(ElevatorDrive, arr);
 		intake = new Intake(lIntake, rIntake, intSol);
+		intake.closeIntake();
 		
 		Pneum = new PneumaticsControl(0, cons.GetInt("PressureSensor"), 4.547368);
-		
-		Pneum.DisplayPSI();
-		Pneum.SystemSwitch();
+		Pneum.GetCompressor().setClosedLoopControl(true);
 		
 		elevatorPress = new Change();
+		intakePress = new Change();
+		fixPress = new Change();
+		gearPress = new Change();
 		
 		//Internal Variables
 		XboxMode = false;
 		demoMode = false;
-		HalfSpeed = false;
 		Rumble = true;
+		ManualElevator = true;
 		
-		FMSdata = "LLL";
+		FMSdata = "";
 		
 		CameraSetup();
 		
@@ -112,39 +116,31 @@ public class Robot extends IterativeRobot
 		chooser.addObject("Left", "left");
 		chooser.addObject("Middle", "mid");
 		chooser.addObject("Right", "right");
+		chooser.addObject("Left Switch", "lswitch");
+		chooser.addObject("Right Switch", "rswitch");
 		chooser.addObject("Dance", "dance");
 		
 		SmartDashboard.putData("Auto choices", chooser);
-		SmartDashboard.putBoolean("XboxMode", XboxMode);
-		SmartDashboard.putBoolean("Demonstration", demoMode);
-		SmartDashboard.putBoolean("HalfSpeed", HalfSpeed);
-		SmartDashboard.putBoolean("Cube", true);
-		
-		SmartDashboard.putString("Set Position", elevator.GetSetPosition().toString());
-		Elevator.Position position = elevator.GetRealPosition();
-		if(position != null)
-			SmartDashboard.putString("Real Position", position.toString());
-		else
-			SmartDashboard.putString("Real Position", "Null");
 	}
 
 	
 	@Override
 	public void autonomousInit() 
 	{
-		AutoSelected = SmartDashboard.getString("Auto choices", "line");
+		AutoSelected = chooser.getSelected();
 		
 		boolean hasCube = SmartDashboard.getBoolean("Cube", false);
 		
-		auto = new Autonomous(chassis, intake, elevator, FMSdata, rEnc, lEnc);
+		elevator.Set(Elevator.Position.Lower);
+		
+		auto = new Autonomous(chassis, intake, elevator, FMSdata, rEnc, lEnc, pushSol);
 		auto.hasCube = hasCube;
 	}
 
-	
 	@Override
 	public void autonomousPeriodic()
 	{
-		Pneum.SystemSwitch();
+		elevator.ElevatorRun();
 		
 		switch(AutoSelected) {
 
@@ -153,8 +149,8 @@ public class Robot extends IterativeRobot
 			break;
 			
 		case "left":
-				auto.Side('L');
-				break;
+			auto.Side('L');
+			break;
 				
 		case "mid":
 			auto.Middle();
@@ -163,6 +159,14 @@ public class Robot extends IterativeRobot
 		case "right":
 			auto.Side('R');
 			break;
+
+		case "lswitch":
+			auto.SimpleSwitch('L');
+			break;
+			
+		case "rswitch":
+			auto.SimpleSwitch('R');
+			break;
 			
 		case "line":
 		default:
@@ -170,13 +174,15 @@ public class Robot extends IterativeRobot
 			break;
 		}
 	}
-
+	
+	public void teleopInit()
+	{
+		
+	}
 	
 	@Override
 	public void teleopPeriodic()
 	{
-		Pneum.SystemSwitch();
-		Pneum.DisplayPSI();
 		elevator.ElevatorRun();
 		
 		//Get values
@@ -190,10 +196,18 @@ public class Robot extends IterativeRobot
 		{
 			DriveVal = Xbox.GetDrive();
 			
-			if(Xbox.getXButtonPressed())
-				HalfSpeed = !HalfSpeed;
-			
-			elevator.Manual(Stick.right.getY());
+			if(Stick.right.getRawButton(4))
+				elevator.Manual(Stick.right.getY());
+			else
+			{
+				if(elevatorPress.State(Stick.right.getPOV() != -1))
+				{
+					if(Stick.right.getPOV() == 0)
+						elevator.Raise();
+					else if(Stick.right.getPOV() == 180)
+						elevator.Lower();
+				}
+			}
 			
 			//Elevator
 			if(Stick.right.getRawButton(3))
@@ -209,30 +223,36 @@ public class Robot extends IterativeRobot
 			
 			if(Stick.right.getRawButton(1))
 				intake.SwitchIntake();
+			
+
+			if(gearPress.State(Stick.left.getPOV() != -1))
+			{
+				if(Stick.left.getPOV() == 0 && Gear < 4)
+					Gear++;
+				else if(Stick.left.getPOV() == 180 && Gear > 2)
+					Gear--;
+			}
 		}
 		else if(demoMode)
 		{
 			DriveVal = Xbox.GetDrive();
 			
-			if(Xbox.getXButtonPressed())
-				HalfSpeed = !HalfSpeed;
-			
-			elevator.Manual(Xbox.getY(Hand.kRight));
-			
 			//Elevator
-			if(Stick.right.getRawButton(1))
-				elevator.Climb();
+			if(ManualElevator)
+				elevator.Manual(Xbox.getY(Hand.kRight));
 			else
 			{
-				//elevator.Manual(-Xbox.getY(Hand.kRight));
-				if(elevatorPress.State(Xbox.getPOV() != 0))
+				if(elevatorPress.State(Math.abs(Xbox.getY(Hand.kRight)) < .1))
 				{
-					if(Xbox.getPOV() == 0)
+					if(Xbox.getY(Hand.kRight) < 0)
 						elevator.Raise();
-					else if(Xbox.getPOV() == 180)
+					else if(Xbox.getY(Hand.kRight) > 0)
 						elevator.Lower();
 				}
 			}
+
+			if(Xbox.getXButtonPressed())
+				ManualElevator = !ManualElevator;
 			
 			//Intake
 			if(Xbox.getAButton())
@@ -248,6 +268,15 @@ public class Robot extends IterativeRobot
 			
 			if(Xbox.getBumperPressed(Hand.kLeft))
 				intake.SwitchIntake();
+			
+
+			if(gearPress.State(Xbox.getTriggerAxis(Hand.kRight) != 0 && Xbox.getTriggerAxis(Hand.kLeft) != 0))
+			{
+				if(Xbox.getTriggerAxis(Hand.kRight) > 0 && Gear < 4)
+					Gear++;
+				else if(Xbox.getTriggerAxis(Hand.kLeft) > 0 && Gear > 2)
+					Gear--;
+			}
 		}
 		else
 		{
@@ -258,15 +287,9 @@ public class Robot extends IterativeRobot
 			else
 				DriveVal = Stick.GetDrive();
 			
-			
-			if(Stick.right.getRawButtonPressed(2))
-				HalfSpeed = !HalfSpeed;
-			
 			//Elevator
-			if(Stick.right.getRawButton(1))
-				elevator.Climb();
-			else if(Xbox.getStickButton(Hand.kRight))
-				elevator.Manual(-Xbox.getY(Hand.kRight));
+			if(ManualElevator)
+				elevator.Manual(Xbox.getY(Hand.kRight));
 			else
 			{
 				if(elevatorPress.State(Xbox.getPOV() != -1))
@@ -278,6 +301,9 @@ public class Robot extends IterativeRobot
 				}
 			}
 			
+			if(Xbox.getXButtonPressed())
+				ManualElevator = !ManualElevator;
+			
 			//Intake
 			if(Xbox.getAButton())
 				intake.intake();
@@ -288,24 +314,28 @@ public class Robot extends IterativeRobot
 			else
 				intake.stopIntake();
 			
-			intake.CubeFix(Xbox.getBumperPressed(Hand.kRight));
+			intake.CubeFix(Xbox.getBumperPressed(Hand.kRight) || fixPress.State(Xbox.getTriggerAxis(Hand.kRight) != 0));
 			
-			if(Xbox.getBumperPressed(Hand.kLeft))
+			if(Xbox.getBumperPressed(Hand.kLeft) || intakePress.State(Xbox.getTriggerAxis(Hand.kLeft) != 0))
 				intake.SwitchIntake();
+			
+			if(gearPress.State(Stick.right.getPOV() != -1))
+			{
+				if(Stick.right.getPOV() == 0 && Gear < 4)
+					Gear++;
+				else if(Stick.right.getPOV() == 180 && Gear > 2)
+					Gear--;
+			}
 			
 			//Temporary Manual
 			if(Stick.left.getPOV() == 0)
-				StopSol.set(Value.kForward);
+				pushSol.set(Value.kForward);
 			else if(Stick.left.getPOV() == 180)
-				StopSol.set(Value.kReverse);
+				pushSol.set(Value.kReverse);
 		}
 		
-		//Chassis
-		if(HalfSpeed)
-		{
-			DriveVal[0] /= 2;
-			DriveVal[1] /= 2;
-		}
+		DriveVal[0] *= (double)Gear/4.0;
+		DriveVal[1] *= (double)Gear/4.0;
 		
 		chassis.drive(DriveVal[0], DriveVal[1]);
 		
@@ -315,7 +345,7 @@ public class Robot extends IterativeRobot
 			Xbox.setRumble(RumbleType.kLeftRumble, Math.abs(DriveVal[0]));
 			Xbox.setRumble(RumbleType.kRightRumble, Math.abs(DriveVal[1]));
 		}
-		else
+		else if(false)
 		{
 			if(Xbox.getXButton())
 			{
@@ -336,16 +366,8 @@ public class Robot extends IterativeRobot
 			MotorSetup();
 		}
 		
-		
-		//Update SmartDashboard Values
-		SmartDashboard.putBoolean("HalfSpeed", HalfSpeed);
-		SmartDashboard.putBoolean("Intake Open", intake.GetIntakePosition());
-		SmartDashboard.putString("Set Position", elevator.GetSetPosition().toString());
-		Elevator.Position position = elevator.GetRealPosition();
-		if(position != null)
-			SmartDashboard.putString("Real Position", position.toString());
-		else
-			SmartDashboard.putString("Real Position", "Null");
+		if(Stick.right.getRawButtonPressed(3))
+			intake.closeIntake();
 	}
 	
 	@Override
@@ -353,14 +375,15 @@ public class Robot extends IterativeRobot
 	{
 		Xbox.setRumble(RumbleType.kLeftRumble, 0);
 		Xbox.setRumble(RumbleType.kRightRumble, 0);
-
-		Pneum.DisplayPSI();
 		
 		String GameData = DriverStation.getInstance().getGameSpecificMessage();
 		if(GameData != "")
 		{
 			FMSdata=GameData;
 		}
+
+		SmartDashboard.putString("FMS", FMSdata);
+		
 	}
 	
 	@Override
@@ -369,6 +392,25 @@ public class Robot extends IterativeRobot
 		
 	}
 	
+	public void robotPeriodic()
+	{
+		Pneum.DisplayPSI();
+		
+		SmartDashboard.putBoolean("Intake Open", intake.GetIntakePosition());
+		SmartDashboard.putBoolean("ManualElevator", ManualElevator);
+		SmartDashboard.putString("Set Position", elevator.GetSetPosition().toString());
+		SmartDashboard.putNumber("Elevator Current", elevator.GetMotor().GetTalons()[0].getOutputCurrent());
+		SmartDashboard.putBoolean("XboxMode", XboxMode);
+		SmartDashboard.putBoolean("Demonstration", demoMode);
+		SmartDashboard.putNumber("Gearing", Gear-1);
+		SmartDashboard.putBoolean("Cube", true);
+		SmartDashboard.putString("Set Position", elevator.GetSetPosition().toString());
+		Elevator.Position position = elevator.GetRealPosition();
+		if(position != null)
+			SmartDashboard.putString("Real Position", position.toString());
+		else
+			SmartDashboard.putString("Real Position", "Null");
+	}
 
 	public void CameraSetup()
 	{
@@ -400,7 +442,7 @@ public class Robot extends IterativeRobot
 		right = new Drive(rightArr);
 		
 		int[] elevatorArr = {cons.GetInt("Elevator")};
-		Elevator = new Drive(elevatorArr);
+		ElevatorDrive = new Drive(elevatorArr);
 		
 		int[] lIntakeArr = {cons.GetInt("lInt")};
 		lIntake = new Drive(lIntakeArr);
