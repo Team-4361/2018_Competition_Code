@@ -2,6 +2,7 @@ package org.usfirst.frc.team4361.robot;
 
 import edu.wpi.first.wpilibj.Encoder;
 import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.DoubleSolenoid;
 
 import Movement.AutonomousMethods;
@@ -22,7 +23,7 @@ public class Autonomous
 	public AutonomousMethods methods;
 
 	String FMS;
-	boolean hasCube = false, hasRun;
+	boolean hasCube = false, hasRun = false;
 	Timer timer;
 	
 	DoubleSolenoid pushSol;
@@ -102,12 +103,11 @@ public class Autonomous
 			if(RunNum.Get() == 0)
 			{
 				pushSol.set(DoubleSolenoid.Value.kForward);
-				methods.wait(.5);
+				methods.wait(.2);
 			}
 			else if(RunNum.Get() == 1)
 			{
 				pushSol.set(DoubleSolenoid.Value.kReverse);
-				elevator.Set(Elevator.Position.Middle);
 				RunNum.Add();
 			}
 
@@ -115,48 +115,71 @@ public class Autonomous
 			else if(FMS != "" && FMS.charAt(1) == side)
 			{
 				if(RunNum.Get() == 2)
-					methods.goDistance(WallToAutoLine + AutoLineToSwitch + SwitchWidth + SwitchToMidNull + RobotWidth*2, .6);
+					methods.goDistance(WallToAutoLine + AutoLineToSwitch + SwitchWidth + SwitchToMidNull, .9);
 				else if(RunNum.Get() == 3)
-					methods.turn(-90*angleRev, .6);
+					methods.goDistance(RobotWidth*2, .6);
 				else if(RunNum.Get() == 4)
-					methods.goDistance(PortalDepth - (RobotWidth-RobotDepth)/2, -.2);
+					methods.turn(-90*angleRev, .6);
 				else if(RunNum.Get() == 5)
 				{
 					elevator.Set(Elevator.Position.Upper);
-					methods.wait(2.5);
+					methods.goDistance(PortalDepth - (RobotWidth-RobotDepth)/2, -.2);
 				}
 				else if(RunNum.Get() == 6)
-					methods.goDistance(WallToScale - RobotDepth, .2);
+				{
+					methods.wait(1.4);
+				}
 				else if(RunNum.Get() == 7)
+					methods.goDistance(WallToScale/2, .2);
+				else if(RunNum.Get() == 8)
 				{
 					intake.openIntake();
 					RunNum.Add();
 				}
-				
+				else if(RunNum.Get() == 9)
+					methods.wait(.5);
+				else if(RunNum.Get() == 10)
+				{
+					elevator.Set(Elevator.Position.Lower);
+					methods.goDistance(WallToScale/4, -.3);
+				}
 
 				else if(FMS.charAt(0) == side && true)
 				{
+					double distanceWidth = SwitchToMidNull + RobotWidth*2, distanceDepth = SwitchToWall - WallToScale/4;
+					
 					//Might go for a switch cube too
-					if(RunNum.Get() == 8)
+					if(RunNum.Get() == 11)
+						methods.turn(-68*angleRev, .6);
+					else if(RunNum.Get() == 12)
+						methods.goDistance(126, .7);
+					else if(RunNum.Get() == 13)
 					{
-						elevator.Set(Elevator.Position.Lower);
-						methods.goDistance(WallToScale - RobotDepth, -.3);
+						intake.closeIntake();
+						intake(.4);
 					}
-					if(RunNum.Get() == 9)
-						methods.turn(-90*angleRev, .6);
-					if(RunNum.Get()==10)
-						methods.goDistance(SwitchToMidNull-BoxWidth-RobotWidth/2-10, .5);
-					if(RunNum.Get()==11)
-						methods.turn(90*angleRev, .6);
-					if(RunNum.Get()==12)
-						methods.goDistance(SwitchToWall + BoxWidth/2 - RobotWidth/2, .4);
+					else if(RunNum.Get() == 14)
+					{
+						elevator.Set(Elevator.Position.Middle);
+						methods.wait(.7);
+					}
+					else if(RunNum.Get() == 15)
+						methods.goDistance(10, .5);
+					else if(RunNum.Get() == 16)
+					{
+						intake.openIntake();
+						RunNum.Add();
+					}
 				}
 			}
 			//Switch on side
 			else if(FMS != "" && FMS.charAt(0) == side)
 			{
 				if(RunNum.Get() == 2)
-					methods.goDistance(WallToAutoLine + AutoLineToSwitch + SwitchWidth/2 - RobotWidth/2, .5);
+				{
+					elevator.Set(Elevator.Position.Middle);
+					methods.goDistance(WallToAutoLine + AutoLineToSwitch + SwitchWidth/2 + RobotWidth/2, .5);
+				}
 				else if(RunNum.Get() == 3)
 					methods.turn(-90*angleRev, .5);
 				else if(RunNum.Get() == 4)
@@ -303,16 +326,19 @@ public class Autonomous
 			{
 				pushSol.set(DoubleSolenoid.Value.kReverse);
 				elevator.Set(Elevator.Position.Middle);
-				methods.turn(90*angleRev, .5);
+				methods.turn(90*angleRev, .6);
 			}
 			else if(RunNum.Get() == 3)
 				methods.goDistance(ArcadeDepth/2 - SwitchToWall - RobotDepth/2 - (StationWidth-ExchangerDepth)/2*angleRev, .4);
 			else if(RunNum.Get() == 4)
-				methods.turn(-90*angleRev, .5);
+				methods.turn(-90*angleRev, .6);
 			else if(RunNum.Get() == 5)
 				methods.goDistance(WallToAutoLine + AutoLineToSwitch - ExchangerWidth - RobotDepth, .4);
 			else if(RunNum.Get() == 6)
-				outtake(.5);
+			{
+				intake.openIntake();
+				RunNum.Add();
+			}
 		}
 		else
 		{
@@ -397,7 +423,10 @@ public class Autonomous
 			else if(RunNum.Get() == 8)
 				methods.goDistance(WallToScale - RobotWidth, .3);
 			else if(RunNum.Get() == 9)
-				outtake(.3);
+			{
+				intake.openIntake();
+				RunNum.Add();
+			}
 		}
 		else if(false)
 		{

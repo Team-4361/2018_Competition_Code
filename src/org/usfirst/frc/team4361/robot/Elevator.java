@@ -251,6 +251,11 @@ public class Elevator
 			lastPosition = Position.Upper;
 			return Position.Upper;
 		}
+		else if(lim[3].get())
+		{
+			lastPosition = Position.MidUp;
+			return Position.MidUp;
+		}
 		else if((lastPosition == Position.Upper && Elevator.GetSpeed() < 0) || (lastPosition == Position.Middle && Elevator.GetSpeed() > 0) || lastPosition == Position.MidUp)
 		{
 			lastPosition = Position.MidUp;

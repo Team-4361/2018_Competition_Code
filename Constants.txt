@@ -24,10 +24,10 @@ stopR=2
 PressureSensor=0
 
 ///Digital
-lEnc1=6
-lEnc2=7
-rEnc1=8
-rEnc2=9
+lEnc1=8
+lEnc2=9
+rEnc1=6
+rEnc2=7
 Upper=0
 Middle=1
 Lower=3
@@ -35,11 +35,11 @@ Stop=2
 
 ///Values
 WheelDiameter=6
-kP=0.02
-kI=0.001
-kD=0.00
+kP=0.03
+kI=0.00
+kD=0.01
 kF=0.00
-kToleranceDegrees=2.0f
+kToleranceDegrees=3.0f
 
 LintakeSpeed=-.58
 RintakeSpeed=-.6

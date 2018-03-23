@@ -43,7 +43,7 @@ public class Robot extends IterativeRobot
 	DoubleSolenoid intSol, pushSol;
 	
 	Encoder lEnc, rEnc;
-	DigitalInput Upper, Middle, Lower, Stop;
+	DigitalInput Upper, Middle, Lower, MidUp;
 	
 	TankDrive chassis;
 	Elevator elevator;
@@ -84,10 +84,10 @@ public class Robot extends IterativeRobot
 		Upper = new DigitalInput(cons.GetInt("Upper"));
 		Middle = new DigitalInput(cons.GetInt("Middle"));
 		Lower = new DigitalInput(cons.GetInt("Lower"));
-		Stop = new DigitalInput(cons.GetInt("Stop"));
+		MidUp = new DigitalInput(cons.GetInt("Stop"));
 		
 		
-		DigitalInput[] arr = {Lower, Middle, Upper};
+		DigitalInput[] arr = {Lower, Middle, Upper, MidUp};
 		
 		chassis = new TankDrive(left, right);
 		elevator = new Elevator(ElevatorDrive, arr);
@@ -106,7 +106,7 @@ public class Robot extends IterativeRobot
 		XboxMode = false;
 		demoMode = false;
 		Rumble = true;
-		ManualElevator = true;
+		ManualElevator = false;
 		
 		FMSdata = "";
 		
@@ -121,6 +121,9 @@ public class Robot extends IterativeRobot
 		chooser.addObject("Dance", "dance");
 		
 		SmartDashboard.putData("Auto choices", chooser);
+		SmartDashboard.putBoolean("XboxMode", XboxMode);
+		SmartDashboard.putBoolean("Demonstration", demoMode);
+		SmartDashboard.putBoolean("Cube", true);
 	}
 
 	
@@ -175,6 +178,7 @@ public class Robot extends IterativeRobot
 		}
 	}
 	
+	@Override
 	public void teleopInit()
 	{
 		
@@ -198,15 +202,13 @@ public class Robot extends IterativeRobot
 			
 			if(Stick.right.getRawButton(4))
 				elevator.Manual(Stick.right.getY());
-			else
+			
+			if(elevatorPress.State(Stick.right.getPOV() != -1))
 			{
-				if(elevatorPress.State(Stick.right.getPOV() != -1))
-				{
-					if(Stick.right.getPOV() == 0)
-						elevator.Raise();
-					else if(Stick.right.getPOV() == 180)
-						elevator.Lower();
-				}
+				if(Stick.right.getPOV() == 0)
+					elevator.Raise();
+				else if(Stick.right.getPOV() == 180)
+					elevator.Lower();
 			}
 			
 			//Elevator
@@ -240,15 +242,13 @@ public class Robot extends IterativeRobot
 			//Elevator
 			if(ManualElevator)
 				elevator.Manual(Xbox.getY(Hand.kRight));
-			else
+			
+			if(elevatorPress.State(Math.abs(Xbox.getY(Hand.kRight)) < .1))
 			{
-				if(elevatorPress.State(Math.abs(Xbox.getY(Hand.kRight)) < .1))
-				{
-					if(Xbox.getY(Hand.kRight) < 0)
-						elevator.Raise();
-					else if(Xbox.getY(Hand.kRight) > 0)
-						elevator.Lower();
-				}
+				if(Xbox.getY(Hand.kRight) < 0)
+					elevator.Raise();
+				else if(Xbox.getY(Hand.kRight) > 0)
+					elevator.Lower();
 			}
 
 			if(Xbox.getXButtonPressed())
@@ -290,15 +290,13 @@ public class Robot extends IterativeRobot
 			//Elevator
 			if(ManualElevator)
 				elevator.Manual(Xbox.getY(Hand.kRight));
-			else
+			
+			if(elevatorPress.State(Xbox.getPOV() != -1))
 			{
-				if(elevatorPress.State(Xbox.getPOV() != -1))
-				{
-					if(Xbox.getPOV() == 0)
-						elevator.Raise();
-					else if(Xbox.getPOV() == 180)
-						elevator.Lower();
-				}
+				if(Xbox.getPOV() == 0)
+					elevator.Raise();
+				else if(Xbox.getPOV() == 180)
+					elevator.Lower();
 			}
 			
 			if(Xbox.getXButtonPressed())
@@ -391,7 +389,8 @@ public class Robot extends IterativeRobot
 	{
 		
 	}
-	
+
+	@Override
 	public void robotPeriodic()
 	{
 		Pneum.DisplayPSI();
@@ -400,10 +399,7 @@ public class Robot extends IterativeRobot
 		SmartDashboard.putBoolean("ManualElevator", ManualElevator);
 		SmartDashboard.putString("Set Position", elevator.GetSetPosition().toString());
 		SmartDashboard.putNumber("Elevator Current", elevator.GetMotor().GetTalons()[0].getOutputCurrent());
-		SmartDashboard.putBoolean("XboxMode", XboxMode);
-		SmartDashboard.putBoolean("Demonstration", demoMode);
 		SmartDashboard.putNumber("Gearing", Gear-1);
-		SmartDashboard.putBoolean("Cube", true);
 		SmartDashboard.putString("Set Position", elevator.GetSetPosition().toString());
 		Elevator.Position position = elevator.GetRealPosition();
 		if(position != null)
