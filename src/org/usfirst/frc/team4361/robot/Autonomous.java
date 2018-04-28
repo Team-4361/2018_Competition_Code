@@ -5,8 +5,8 @@ import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.DoubleSolenoid;
 
-import Movement.AutonomousMethods;
-import MotorControllers.Drive;
+import Autonomous.AutonomousMethods;
+import Controllers.Drive;
 import Chassis.TankDrive;
 import Util.*;
 
@@ -86,14 +86,15 @@ public class Autonomous
 		}
 			
 	}
-	
+
+	//MainChoice
 	public void Side(char side)
 	{
 		int angleRev = 1;
 		if(side == 'L')
 			angleRev = -1;
 
-		if(FMS == "" || (FMS.charAt(0) != side && FMS.charAt(1) != side))
+		if((FMS == "" || (FMS.charAt(0) != side && FMS.charAt(1) != side)) && false)
 		{
 			DriveToLine();
 		}
@@ -112,84 +113,19 @@ public class Autonomous
 			}
 
 			//Scale on Side
-			else if(FMS != "" && FMS.charAt(1) == side)
+			else if(FMS.charAt(1) == side)
 			{
-				if(RunNum.Get() == 2)
-					methods.goDistance(WallToAutoLine + AutoLineToSwitch + SwitchWidth + SwitchToMidNull, 1);
-				else if(RunNum.Get() == 3)
-					methods.goDistance(RobotWidth*2, .6);
-				else if(RunNum.Get() == 4)
-					methods.turn(-90*angleRev, .7);
-				else if(RunNum.Get() == 5)
-				{
-					elevator.Set(Elevator.Position.Upper);
-					methods.goDistance(PortalDepth - (RobotWidth-RobotDepth)/2, -.3);
-				}
-				else if(RunNum.Get() == 6)
-				{
-					methods.wait(1.4);
-				}
-				else if(RunNum.Get() == 7)
-					methods.goDistance(WallToScale/2, .2);
-				else if(RunNum.Get() == 8)
-				{
-					intake.openIntake();
-					RunNum.Add();
-				}
-				else if(RunNum.Get() == 9)
-					methods.wait(.4);
-				else if(RunNum.Get() == 10)
-				{
-					methods.goDistance(WallToScale/8, -.3);
-				}
-				else if(RunNum.Get() == 11)
-				{
-					elevator.Set(Elevator.Position.Lower);
-					methods.goDistance(WallToScale/8, -.3);
-				}
-
-				else if(FMS.charAt(0) == side && true)
-				{
-					double distanceWidth = SwitchToMidNull + RobotWidth*2, distanceDepth = SwitchToWall - WallToScale/4;
-					
-					//Might go for a switch cube too
-					if(RunNum.Get() == 12)
-						methods.turn(-68*angleRev, .6);
-					else if(RunNum.Get() == 13)
-						methods.goDistance(126, .7);
-					else if(RunNum.Get() == 14)
-					{
-						intake.closeIntake();
-						intake(.4);
-					}
-					else if(RunNum.Get() == 15)
-					{
-						elevator.Set(Elevator.Position.Middle);
-						methods.wait(.7);
-					}
-					else if(RunNum.Get() == 16)
-						methods.goDistance(10, .5);
-					else if(RunNum.Get() == 17)
-					{
-						intake.openIntake();
-						RunNum.Add();
-					}
-				}
+				Scale(side, true);
 			}
 			//Switch on side
-			else if(FMS != "" && FMS.charAt(0) == side)
+			else if(FMS.charAt(0) == side)
 			{
-				if(RunNum.Get() == 2)
-				{
-					elevator.Set(Elevator.Position.Middle);
-					methods.goDistance(WallToAutoLine + AutoLineToSwitch + SwitchWidth/2 + RobotWidth/2, .5);
-				}
-				else if(RunNum.Get() == 3)
-					methods.turn(-90*angleRev, .5);
-				else if(RunNum.Get() == 4)
-					methods.goDistance(SwitchToWall - PortalDepth - RobotWidth + 10, .3);
-				else if(RunNum.Get() == 5)
-					outtake(.7);
+				SideSwitch(side);
+			}
+			//Scale on opposite side
+			else if(FMS.charAt(1) != side)
+			{
+				ScaleCrossover(side);
 			}
 		}
 		else
@@ -268,6 +204,273 @@ public class Autonomous
 		}
 	}
 	
+	//MainChoice
+	public void Side(char side, boolean PrioritySwitch, boolean Scale, boolean Switch, boolean Crossover, boolean Second)
+	{
+		int angleRev = 1;
+		if(side == 'L')
+			angleRev = -1;
+
+		if(hasCube)
+		{
+			//Start with cube
+			if(RunNum.Get() == 0)
+			{
+				pushSol.set(DoubleSolenoid.Value.kForward);
+				methods.wait(.2);
+			}
+			else if(RunNum.Get() == 1)
+			{
+				pushSol.set(DoubleSolenoid.Value.kReverse);
+				RunNum.Add();
+			}
+
+			//Scale on Side
+			else if(FMS.charAt(0) == side && PrioritySwitch)
+			{
+				SideSwitch(side);
+			}
+			else if(FMS.charAt(1) == side && Scale)
+			{
+				Scale(side, Second);
+			}
+			//Switch on side
+			else if(FMS.charAt(0) == side && Switch)
+			{
+				SideSwitch(side);
+			}
+			//Scale on opposite side
+			else if(FMS.charAt(1) != side && Crossover)
+			{
+				ScaleCrossover(side);
+			}
+			else
+			{
+				DriveToLine();
+			}
+		}
+		else
+		{
+			//Get cube in auto
+			if(RunNum.Get() == 0)
+			{
+				pushSol.set(DoubleSolenoid.Value.kForward);
+				methods.goDistance(WallToAutoLine + AutoLineToSwitch + SwitchWidth + BoxWidth + (RobotWidth-RobotDepth)/2 + 5, .5);
+			}
+			if(RunNum.Get() == 1)
+			{
+				pushSol.set(DoubleSolenoid.Value.kReverse);
+				methods.turn(-90 * angleRev, .7);
+			}
+			if(RunNum.Get() == 2)
+				methods.goDistance(SwitchToWall - PortalDepth - RobotDepth/2 + BoxWidth/2, .2);
+			if(RunNum.Get() == 3)
+			{
+				elevator.Set(Elevator.Position.Middle);
+				intake.openIntake();
+				methods.wait(.5);
+			}
+			if(RunNum.Get() == 4)
+				methods.turn(-90 * angleRev, .7);
+			if(RunNum.Get() == 5)
+			{
+				elevator.Set(Elevator.Position.Lower);
+				methods.wait(.5);
+			}
+			if(RunNum.Get() == 6)
+			{
+				methods.goDistance(5, .2);
+				intake.intake();
+			}
+			if(RunNum.Get() == 7)
+			{
+				intake.closeIntake();
+				intake.intake();
+				methods.wait(.3);
+			}
+			if(RunNum.Get() == 8)
+			{
+				intake.stopIntake();
+				RunNum.Add();
+			}
+			
+			
+			//Scale
+			if(FMS.charAt(1) == side)
+			{
+				if(RunNum.Get() == 9)
+					methods.turn(90*angleRev, .6);
+				if(RunNum.Get() == 10)
+					methods.goDistance(BoxWidth, -.2);
+				if(RunNum.Get() == 11)
+					methods.turn(90*angleRev, .5);
+				if(RunNum.Get() == 12)
+				{
+					elevator.Set(Elevator.Position.Upper);
+					methods.goDistance(SwitchToMidNull-BoxWidth-ScalePlate/2-RobotWidth/2, .4);
+				}
+				if(RunNum.Get() == 13)
+					outtake(.3);
+			}
+			//Switch
+			else if(FMS.charAt(0) == side)
+			{
+				if(RunNum.Get() == 9)
+				{
+					methods.goDistance(BoxWidth, .2);
+				}
+				if(RunNum.Get() == 10)
+					outtake(.5);
+			}
+		}
+	}
+
+	//MainChoice
+	public void SideScaleOnly(char side)
+	{
+		int angleRev = 1;
+		if(side == 'L')
+			angleRev = -1;
+
+		if(hasCube)
+		{
+			//Start with cube
+			if(RunNum.Get() == 0)
+			{
+				pushSol.set(DoubleSolenoid.Value.kForward);
+				methods.wait(.2);
+			}
+			else if(RunNum.Get() == 1)
+			{
+				pushSol.set(DoubleSolenoid.Value.kReverse);
+				RunNum.Add();
+			}
+
+			//Scale on Side
+			else if(FMS.charAt(1) == side)
+			{
+				Scale(side, true);
+			}
+			//Scale on opposite side
+			else if(FMS.charAt(1) != side)
+			{
+				ScaleCrossover(side);
+			}
+		}
+	}
+	
+	//MainChoice
+	public void SideOnly(char side)
+	{
+		int angleRev = 1;
+		if(side == 'L')
+			angleRev = -1;
+
+		if((FMS == "" || (FMS.charAt(0) != side && FMS.charAt(1) != side)))
+		{
+			DriveToLine();
+		}
+		else if(hasCube)
+		{
+			//Start with cube
+			if(RunNum.Get() == 0)
+			{
+				pushSol.set(DoubleSolenoid.Value.kForward);
+				methods.wait(.2);
+			}
+			else if(RunNum.Get() == 1)
+			{
+				pushSol.set(DoubleSolenoid.Value.kReverse);
+				RunNum.Add();
+			}
+
+			//Scale on Side
+			else if(FMS.charAt(1) == side)
+			{
+				Scale(side, true);
+			}
+			//Switch on side
+			else if(FMS.charAt(0) == side)
+			{
+				SideSwitch(side);
+			}
+		}
+		else
+		{
+			//Get cube in auto
+			if(RunNum.Get() == 0)
+			{
+				pushSol.set(DoubleSolenoid.Value.kForward);
+				methods.goDistance(WallToAutoLine + AutoLineToSwitch + SwitchWidth + BoxWidth + (RobotWidth-RobotDepth)/2 + 5, .5);
+			}
+			if(RunNum.Get() == 1)
+			{
+				pushSol.set(DoubleSolenoid.Value.kReverse);
+				methods.turn(-90 * angleRev, .7);
+			}
+			if(RunNum.Get() == 2)
+				methods.goDistance(SwitchToWall - PortalDepth - RobotDepth/2 + BoxWidth/2, .2);
+			if(RunNum.Get() == 3)
+			{
+				elevator.Set(Elevator.Position.Middle);
+				intake.openIntake();
+				methods.wait(.5);
+			}
+			if(RunNum.Get() == 4)
+				methods.turn(-90 * angleRev, .7);
+			if(RunNum.Get() == 5)
+			{
+				elevator.Set(Elevator.Position.Lower);
+				methods.wait(.5);
+			}
+			if(RunNum.Get() == 6)
+			{
+				methods.goDistance(5, .2);
+				intake.intake();
+			}
+			if(RunNum.Get() == 7)
+			{
+				intake.closeIntake();
+				intake.intake();
+				methods.wait(.3);
+			}
+			if(RunNum.Get() == 8)
+			{
+				intake.stopIntake();
+				RunNum.Add();
+			}
+			
+			
+			//Scale
+			if(FMS.charAt(1) == side)
+			{
+				if(RunNum.Get() == 9)
+					methods.turn(90*angleRev, .6);
+				if(RunNum.Get() == 10)
+					methods.goDistance(BoxWidth, -.2);
+				if(RunNum.Get() == 11)
+					methods.turn(90*angleRev, .5);
+				if(RunNum.Get() == 12)
+				{
+					elevator.Set(Elevator.Position.Upper);
+					methods.goDistance(SwitchToMidNull-BoxWidth-ScalePlate/2-RobotWidth/2, .4);
+				}
+				if(RunNum.Get() == 13)
+					outtake(.3);
+			}
+			//Switch
+			else if(FMS.charAt(0) == side)
+			{
+				if(RunNum.Get() == 9)
+				{
+					methods.goDistance(BoxWidth, .2);
+				}
+				if(RunNum.Get() == 10)
+					outtake(.5);
+			}
+		}
+	}
+
 	public void SimpleSwitch(char side)
 	{
 		if(FMS != "" && FMS.charAt(0) == side)
@@ -308,6 +511,148 @@ public class Autonomous
 		else
 		{
 			DriveToLine();
+		}
+	}
+	
+	public void Scale(char side, boolean Second)
+	{
+		int angleRev = 1;
+		if(side == 'L')
+			angleRev = -1;
+		
+		if(RunNum.Get() == 2)
+			methods.goDistance(WallToAutoLine + AutoLineToSwitch + SwitchWidth + SwitchToMidNull, 1);
+		else if(RunNum.Get() == 3)
+		{
+			elevator.Set(Elevator.Position.Middle);
+			methods.goDistance(RobotWidth*2, .6);
+		}
+		else if(RunNum.Get() == 4)
+			methods.turn(-90*angleRev, .7);
+		else if(RunNum.Get() == 5)
+		{
+			elevator.Set(Elevator.Position.Upper);
+			methods.goDistance(PortalDepth - (RobotWidth-RobotDepth)/2, -.3);
+		}
+		else if(RunNum.Get() == 6)
+		{
+			methods.wait(1.4);
+		}
+		else if(RunNum.Get() == 7)
+			methods.goDistance(WallToScale/2, .2);
+		else if(RunNum.Get() == 8)
+		{
+			intake.openIntake();
+			RunNum.Add();
+		}
+		else if(RunNum.Get() == 9)
+			methods.wait(.4);
+		else if(RunNum.Get() == 10)
+		{
+			methods.goDistance(WallToScale/8, -.3);
+		}
+		else if(RunNum.Get() == 11)
+		{
+			elevator.Set(Elevator.Position.Lower);
+			methods.goDistance(WallToScale/8, -.3);
+		}
+		else if(Second)
+		{
+			double distanceWidth = SwitchToMidNull + RobotWidth*2, distanceDepth = SwitchToWall - WallToScale/4;
+			
+			//Might go for a switch cube too
+			if(RunNum.Get() == 12)
+				methods.turn(-68*angleRev, .6);
+			else if(RunNum.Get() == 13)
+				methods.goDistance(126, .8);
+			else if(RunNum.Get() == 14)
+			{
+				intake.closeIntake();
+				intake(.4);
+			}
+			else if(FMS.charAt(0) == side)
+			{
+				if(RunNum.Get() == 15)
+				{
+					elevator.Set(Elevator.Position.Middle);
+					methods.wait(.8);
+				}
+				else if(RunNum.Get() == 16)
+					methods.goDistance(10, .6);
+				else if(RunNum.Get() == 17)
+				{
+					intake.openIntake();
+					RunNum.Add();
+				}
+			}
+		}
+	}
+	
+	public void ScaleCrossover(char side)
+	{
+		int angleRev = 1;
+		if(side == 'L')
+			angleRev = -1;
+
+
+		if(RunNum.Get() == 2)
+			methods.goDistance(WallToAutoLine + AutoLineToSwitch + SwitchWidth + 67, 1);
+		else if(RunNum.Get() == 3)
+			methods.goDistance(BoxWidth*1.5, .6);
+		else if(RunNum.Get() == 4)
+			methods.turn(-90*angleRev, .7);
+		else if(RunNum.Get() == 5)
+			methods.goDistance(ArcadeDepth - PortalDepth - WallToScale, .9);
+		else if(RunNum.Get() == 6)
+		{
+			elevator.Set(Elevator.Position.Middle);
+			methods.goDistance(12, .6);
+		}
+		else if(RunNum.Get() == 7)
+		{
+			elevator.Set(Elevator.Position.Upper);
+			methods.turn(90*angleRev, .7);
+		}
+		else if(RunNum.Get() == 8)
+			methods.wait(1.7);
+		else if(RunNum.Get() == 9)
+			methods.goDistance(SwitchToMidNull - ScalePlate/2 - BoxWidth*1.5 - RobotWidth + 27, .2);
+		else if(RunNum.Get() == 10)
+		{
+			intake.openIntake();
+			RunNum.Add();
+		}
+		else if(RunNum.Get() == 11)
+			methods.wait(.4);
+		else if(RunNum.Get() == 12)
+		{
+			methods.goDistance(WallToScale/4, -.2);
+		}
+		else if(RunNum.Get() == 13)
+		{
+			elevator.Set(Elevator.Position.Lower);
+		}
+	}
+	
+	public void SideSwitch(char side)
+	{
+		int angleRev = 1;
+		if(side == 'L')
+			angleRev = -1;
+
+		if(RunNum.Get() == 2)
+		{
+			elevator.Set(Elevator.Position.Middle);
+			methods.goDistance(WallToAutoLine + AutoLineToSwitch + SwitchWidth/2 + RobotWidth/2, .5);
+		}
+		else if(RunNum.Get() == 3)
+			methods.turn(-90*angleRev, .5);
+		else if(RunNum.Get() == 4)
+			methods.goDistance(SwitchToWall - PortalDepth - RobotWidth + 15, .3);
+		else if(RunNum.Get() == 5)
+		{
+			intake.openIntake();
+			RunNum.Add();
 		}
 	}
 	

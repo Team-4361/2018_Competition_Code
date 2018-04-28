@@ -36,17 +36,17 @@ Stop=2
 ///Values
 WheelDiameter=6
 kP=0.03
-kI=0.00
-kD=0.01
+kI=0.0003
+kD=0.02
 kF=0.00
-kToleranceDegrees=3.0f
+kToleranceDegrees=4.0f
 
 LintakeSpeed=-.58
 RintakeSpeed=-.6
 outtakeSpeed=.55
 fastOuttakeSpeed=.7
 stopIntakeSpeed=.05
-elevatorSpeed=-.8
+elevatorSpeed=-.85
 elevatorDownSpeed=-.7
 climbSpeed=-.4
 

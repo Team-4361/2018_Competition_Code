@@ -5,7 +5,7 @@ import edu.wpi.first.wpilibj.DoubleSolenoid;
 import edu.wpi.first.wpilibj.Encoder;
 import edu.wpi.first.wpilibj.Timer;
 
-import MotorControllers.*;
+import Controllers.*;
 import Util.*;
 
 public class Elevator
@@ -256,12 +256,12 @@ public class Elevator
 			lastPosition = Position.MidUp;
 			return Position.MidUp;
 		}
-		else if((lastPosition == Position.Upper && Elevator.GetSpeed() < 0) || (lastPosition == Position.Middle && Elevator.GetSpeed() > 0) || lastPosition == Position.MidUp)
+		else if((lastPosition == Position.Upper && Elevator.GetSpeed() > 0) || (lastPosition == Position.Middle && Elevator.GetSpeed() < 0) || lastPosition == Position.MidUp)
 		{
 			lastPosition = Position.MidUp;
 			return Position.MidUp;
 		}
-		else if((lastPosition == Position.Lower && Elevator.GetSpeed() > 0) || (lastPosition == Position.Middle && Elevator.GetSpeed() < 0) || lastPosition == Position.LowMid)
+		else if((lastPosition == Position.Lower && Elevator.GetSpeed() < 0) || (lastPosition == Position.Middle && Elevator.GetSpeed() > 0) || lastPosition == Position.LowMid)
 		{
 			lastPosition = Position.LowMid;
 			return Position.LowMid;
@@ -270,7 +270,10 @@ public class Elevator
 		if(position == Position.Lower || position == Position.Upper)
 			return Position.Middle;
 		else if(lastPosition == Position.Middle)
+		{
+			lastPosition = Position.LowMid;
 			return Position.LowMid;
+		}
 		
 		return null;
 	}

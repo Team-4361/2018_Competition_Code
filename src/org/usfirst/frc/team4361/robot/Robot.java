@@ -13,11 +13,9 @@ import com.ctre.phoenix.motorcontrol.can.WPI_TalonSRX;
 import edu.wpi.first.wpilibj.Encoder;
 import edu.wpi.first.wpilibj.DigitalInput;
 import edu.wpi.first.wpilibj.CameraServer;
-import MotorControllers.PneumaticsControl;
-import Movement.*;
 import Chassis.*;
 import Controls.*;
-import MotorControllers.*;
+import Controllers.*;
 import Util.*;
 
 /**
@@ -89,7 +87,7 @@ public class Robot extends IterativeRobot
 		
 		DigitalInput[] arr = {Lower, Middle, Upper, MidUp};
 		
-		chassis = new TankDrive(left, right);
+		chassis = new TankDrive(left, right, lEnc, rEnc);
 		elevator = new Elevator(ElevatorDrive, arr);
 		intake = new Intake(lIntake, rIntake, intSol);
 		intake.closeIntake();
@@ -116,14 +114,24 @@ public class Robot extends IterativeRobot
 		chooser.addObject("Left", "left");
 		chooser.addObject("Middle", "mid");
 		chooser.addObject("Right", "right");
-		chooser.addObject("Left Switch", "lswitch");
-		chooser.addObject("Right Switch", "rswitch");
+		//chooser.addObject("Left Switch", "lswitch");
+		//chooser.addObject("Right Switch", "rswitch");
+		//chooser.addObject("Left Scale", "lscale");
+		//chooser.addObject("Right Scale", "rscale");
+		//chooser.addObject("Left Only", "lonly");
+		//chooser.addObject("Right Only", "ronly");
 		chooser.addObject("Dance", "dance");
 		
 		SmartDashboard.putData("Auto choices", chooser);
 		SmartDashboard.putBoolean("XboxMode", XboxMode);
 		SmartDashboard.putBoolean("Demonstration", demoMode);
 		SmartDashboard.putBoolean("Cube", true);
+
+		SmartDashboard.putBoolean("PrioritySwitch", false);
+		SmartDashboard.putBoolean("Scale", true);
+		SmartDashboard.putBoolean("Switch", true);
+		SmartDashboard.putBoolean("Crossover", true);
+		SmartDashboard.putBoolean("Second", true);
 	}
 
 	
@@ -146,13 +154,13 @@ public class Robot extends IterativeRobot
 		elevator.ElevatorRun();
 		
 		switch(AutoSelected) {
-
+		
 		case "dance":
 			auto.Dance();
 			break;
 			
 		case "left":
-			auto.Side('L');
+			auto.Side('L', SmartDashboard.getBoolean("PrioritySwitch", true), SmartDashboard.getBoolean("Scale", true), SmartDashboard.getBoolean("Switch", true), SmartDashboard.getBoolean("Crossover", true), SmartDashboard.getBoolean("Second", true));
 			break;
 				
 		case "mid":
@@ -160,7 +168,7 @@ public class Robot extends IterativeRobot
 			break;
 			
 		case "right":
-			auto.Side('R');
+			auto.Side('R', SmartDashboard.getBoolean("PrioritySwitch", true), SmartDashboard.getBoolean("Scale", true), SmartDashboard.getBoolean("Switch", true), SmartDashboard.getBoolean("Crossover", true), SmartDashboard.getBoolean("Second", true));
 			break;
 
 		case "lswitch":
@@ -169,6 +177,22 @@ public class Robot extends IterativeRobot
 			
 		case "rswitch":
 			auto.SimpleSwitch('R');
+			break;
+
+		case "lscale":
+			auto.SideScaleOnly('L');
+			break;
+			
+		case "ronly":
+			auto.SideOnly('R');
+			break;
+			
+		case "lonly":
+			auto.SideOnly('L');
+			break;
+			
+		case "rscale":
+			auto.SideScaleOnly('R');
 			break;
 			
 		case "line":
@@ -187,7 +211,8 @@ public class Robot extends IterativeRobot
 	@Override
 	public void teleopPeriodic()
 	{
-		elevator.ElevatorRun();
+		if(!ManualElevator)
+			elevator.ElevatorRun();
 		
 		//Get values
 		XboxMode = SmartDashboard.getBoolean("XboxMode", false);
@@ -366,6 +391,12 @@ public class Robot extends IterativeRobot
 		
 		if(Stick.right.getRawButtonPressed(3))
 			intake.closeIntake();
+		
+
+		if(Stick.left.getPOV() == 0)
+			pushSol.set(DoubleSolenoid.Value.kForward);
+		else if(Stick.left.getPOV() == 180)
+			pushSol.set(DoubleSolenoid.Value.kReverse);
 	}
 	
 	@Override
